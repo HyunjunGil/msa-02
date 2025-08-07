@@ -22,14 +22,48 @@ This is a Spring Boot microservices application that demonstrates a simple micro
 ### Post Service
 - `GET /posts` - Get list of posts with author information
 
-## Running the Application
+## 🚀 How to Run Now
 
-1. Make sure you have Java 17 installed
-2. Run the application:
-   ```bash
-   ./gradlew bootRun
-   ```
-3. The application will start on `http://localhost:8080`
+### **Option 1: Use the Windows Script (Recommended)**
+```cmd
+run-services.bat
+```
+This script will automatically:
+- Set up Gradle wrappers for both services
+- Build UserService and PostService
+- Start both services on their respective ports
+- Test the services
+
+### **Option 2: Manual Build and Run**
+```cmd
+# Step 1: Build both services
+build-services.bat
+
+# Step 2: Run UserService (in one terminal)
+cd UserService
+java -jar build\libs\user-service-0.0.1-SNAPSHOT.jar
+
+# Step 3: Run PostService (in another terminal)
+cd PostService
+java -jar build\libs\post-service-0.0.1-SNAPSHOT.jar
+```
+
+### **Option 3: Troubleshooting**
+```cmd
+troubleshooting.bat
+```
+Use this script to:
+- Check service status
+- Restart services
+- Diagnose connection issues
+- Test service communication
+
+### **Service URLs**
+- **UserService**: http://localhost:8081
+- **PostService**: http://localhost:8080
+- **Test Endpoints**:
+  - UserService: `GET http://localhost:8081/users/1`
+  - PostService: `GET http://localhost:8080/posts/1`
 
 ## Testing
 
