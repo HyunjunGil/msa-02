@@ -49,3 +49,89 @@ To build the project:
 
 - Spring Boot Starter Web
 - Spring Boot Starter Test (for testing)
+
+# Block 2: Docker 환경 전환 실습 안내
+
+## 1. 포트 설정 확인
+- `UserService`는 **8081**
+- `PostService`는 **8080**에서 실행되어야 합니다
+
+## 2. Dockerfile 작성
+- 각 서비스 디렉토리에 `Dockerfile`을 직접 작성하세요
+
+## 3. Docker 네트워크 생성
+
+```bash
+docker network create msa-network
+```
+
+## 4. 컨테이너 실행
+
+### 방법 1: Docker Compose 사용 (권장)
+```bash
+# 전체 서비스 한 번에 실행
+docker-compose up -d --build
+
+# 서비스 중지
+docker-compose down
+```
+
+### 방법 2: 개별 컨테이너 실행
+```bash
+# UserService 빌드 및 실행
+cd UserService
+docker build -t userservice .
+docker run -d --name userservice --network msa-network -p 8081:8081 userservice
+
+# PostService 빌드 및 실행
+cd PostService
+docker build -t postservice .
+docker run -d --name postservice --network msa-network -p 8080:8080 postservice
+```
+
+### 방법 3: 자동화 스크립트 사용
+```bash
+# Linux/Mac
+./docker-setup.sh
+
+# Windows
+docker-setup.bat
+```
+
+## 5. PostService → UserService 호출 주소
+- 내부 DNS 이름을 사용해야 하므로 `http://userservice:8081`로 호출해야 합니다
+
+## 6. 통신 확인 테스트
+
+- `.http` 파일을 사용해 `PostService`의 동작을 확인해보세요
+- 실패 실험을 위해 `UserService`를 중단한 상태에서도 호출해보세요
+
+## 7. 문제 해결
+
+### 컨테이너 로그 확인
+```bash
+# UserService 로그
+docker logs userservice
+
+# PostService 로그
+docker logs postservice
+```
+
+### 네트워크 연결 확인
+```bash
+# 네트워크 목록 확인
+docker network ls
+
+# 네트워크 상세 정보 확인
+docker network inspect msa-network
+```
+
+### 컨테이너 재시작
+```bash
+# 개별 컨테이너 재시작
+docker restart userservice
+docker restart postservice
+
+# 또는 Docker Compose 사용
+docker-compose restart
+```

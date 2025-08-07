@@ -1,116 +1,114 @@
 project:
-  name: update-userclient-to-strategies
-  files:
-    - path: src/main/java/com/example/postservice/UserClient.java
-      content: |
-        package com.example.postservice;
+  name: working-msa-services-setup
+  description: "UserService(8081)와 PostService(8080) 정상 동작을 위한 코드 설정과 실행 방법"
 
-        import lombok.RequiredArgsConstructor;
-        import lombok.extern.slf4j.Slf4j;
-        import org.springframework.http.ResponseEntity;
-        import org.springframework.stereotype.Component;
-        import org.springframework.web.client.RestTemplate;
+# 실제 동작하는 코드 설정
+code_changes:
+  - path: PostService/src/main/java/com/example/postservice/UserClient.java
+    change_description: "UserService 호출 포트를 8081로 수정"
+    line: 16
+    from: 'private static final String USER_SERVICE_URL = "http://localhost:8080/users/";'
+    to: 'private static final String USER_SERVICE_URL = "http://localhost:8081/users/";'
 
-        @Slf4j
-        @Component
-        @RequiredArgsConstructor
-        public class UserClient {
+# 문제 해결을 위한 추가 명령어들
+troubleshooting_commands:
+  restart_postservice:
+    description: "PostService 재시작 (코드 변경 후 필수)"
+    commands:
+      - "pkill -f 'post-service' && sleep 2"
+      - "cd PostService && ./gradlew build -x test"
+      - "java -jar build/libs/post-service-0.0.1-SNAPSHOT.jar &"
 
-            private final RestTemplate restTemplate;
+  check_processes:
+    description: "실행 중인 서비스 확인"
+    commands:
+      - "lsof -i :8080 -i :8081"  # 포트 사용 확인
+      - "ps aux | grep java"      # Java 프로세스 확인
 
-            private static final String USER_SERVICE_URL = "http://localhost:8080/users/";
+  stop_all:
+    description: "모든 서비스 중지"
+    commands:
+      - "pkill -f 'user-service'"
+      - "pkill -f 'post-service'"
 
-            public String getUserName(Long userId) {
-                // =======================
-                // 아래 코드 중 하나만 주석 해제하여 전략 적용
-                // =======================
+# 핵심 설정 파일들
+key_configurations:
+  userservice_port:
+    file: "UserService/src/main/resources/application.yml"
+    content: |
+      server:
+        port: 8081
 
-                return strategyA(userId);
-                // return strategyB(userId);
-                // return strategyC(userId);
-                // return strategyD(userId);
-            }
+  postservice_port:
+    file: "PostService/src/main/resources/application.yml"  
+    content: |
+      server:
+        port: 8080
 
-            @SuppressWarnings("unused") // 전략 선택을 위한 메소드
-            private String strategyA(Long userId) {
-                try {
-                    ResponseEntity<UserResponse> response =
-                        restTemplate.getForEntity(USER_SERVICE_URL + userId, UserResponse.class);
-                    UserResponse body = response.getBody();
-                    return body != null ? body.getName() : null;
-                } catch (Exception e) {
-                    log.error("UserService 호출 실패", e);
-                    return null;
-                }
-            }
+  userclient_url:
+    file: "PostService/src/main/java/com/example/postservice/UserClient.java"
+    critical_line: 'private static final String USER_SERVICE_URL = "http://localhost:8081/users/";'
+    note: "이 부분이 8080이면 자기 자신을 호출해서 'Unknown User' 반환됨!"
 
-            @SuppressWarnings("unused") // 전략 선택을 위한 메소드
-            private String strategyB(Long userId) {
-                try {
-                    ResponseEntity<UserResponse> response =
-                        restTemplate.getForEntity(USER_SERVICE_URL + userId, UserResponse.class);
-                    UserResponse body = response.getBody();
-                    return body != null ? body.getName() : "Unknown User";
-                } catch (Exception e) {
-                    log.warn("UserService 호출 실패 – 기본값 반환");
-                    return "Unknown User";
-                }
-            }
+# 실행 스크립트 (한번에 실행)
+run_script: |
+  #!/bin/bash
+  
+  # 1. Gradle Wrapper 설정
+  echo "Setting up Gradle Wrappers..."
+  cp gradlew UserService/ && cp gradlew.bat UserService/ && cp -r gradle UserService/
+  cp gradlew PostService/ && cp gradlew.bat PostService/ && cp -r gradle PostService/
+  
+  # 2. 권한 설정 및 빌드
+  echo "Building UserService..."
+  cd UserService && chmod +x gradlew && ./gradlew build -x test
+  
+  echo "Building PostService..."
+  cd ../PostService && chmod +x gradlew && ./gradlew build -x test
+  
+  # 3. 서비스 시작
+  echo "Starting UserService on port 8081..."
+  cd ../UserService && java -jar build/libs/user-service-0.0.1-SNAPSHOT.jar &
+  USER_PID=$!
+  
+  echo "Starting PostService on port 8080..."
+  cd ../PostService && java -jar build/libs/post-service-0.0.1-SNAPSHOT.jar &
+  POST_PID=$!
+  
+  # 4. 서비스 시작 대기
+  echo "Waiting for services to start..."
+  sleep 5
+  
+  # 5. 테스트
+  echo "Testing UserService..."
+  curl -s http://localhost:8081/users/1
+  
+  echo -e "\nTesting PostService integration..."
+  curl -s http://localhost:8080/posts
+  
+  echo -e "\nServices started successfully!"
+  echo "UserService PID: $USER_PID (port 8081)"
+  echo "PostService PID: $POST_PID (port 8080)"
 
-            @SuppressWarnings("unused") // 전략 선택을 위한 메소드
-            private String strategyC(Long userId) {
-                ResponseEntity<UserResponse> response =
-                    restTemplate.getForEntity(USER_SERVICE_URL + userId, UserResponse.class);
-                UserResponse body = response.getBody();
-                if (body == null) {
-                    throw new RuntimeException("UserService에서 null 응답을 받았습니다.");
-                }
-                return body.getName(); // 실패 시 예외 그대로 터짐
-            }
+# 중요한 실수 방지 체크리스트
+critical_checklist:
+  - "✅ UserClient.java에서 USER_SERVICE_URL이 http://localhost:8081/users/ 인지 확인"
+  - "✅ UserService application.yml에서 port: 8081 설정 확인"
+  - "✅ PostService application.yml에서 port: 8080 설정 확인"
+  - "✅ 코드 변경 후 반드시 ./gradlew build 재실행"
+  - "✅ PostService 재시작 시 기존 프로세스 pkill로 종료"
+  - "✅ JAR 파일명: user-service-0.0.1-SNAPSHOT.jar, post-service-0.0.1-SNAPSHOT.jar"
 
-            private String strategyD(Long userId) {
-                int retryCount = 0;
-                while (retryCount < 3) {
-                    try {
-                        ResponseEntity<UserResponse> response =
-                            restTemplate.getForEntity(USER_SERVICE_URL + userId, UserResponse.class);
-                        UserResponse body = response.getBody();
-                        if (body != null) {
-                            return body.getName();
-                        }
-                    } catch (Exception e) {
-                        retryCount++;
-                        log.warn("UserService 호출 실패 - {}회차 재시도", retryCount);
-                        try {
-                            Thread.sleep(500);
-                        } catch (InterruptedException ie) {
-                            Thread.currentThread().interrupt();
-                            break;
-                        }
-                    }
-                }
-                log.error("UserService 재시도 실패 – 기본값 반환");
-                return "Unknown User";
-            }
-
-            static class UserResponse {
-                private Long id;
-                private String name;
-
-                public Long getId() {
-                    return id;
-                }
-
-                public void setId(Long id) {
-                    this.id = id;
-                }
-
-                public String getName() {
-                    return name;
-                }
-
-                public void setName(String name) {
-                    this.name = name;
-                }
-            }
-        }
+# 성공 확인 방법
+success_indicators:
+  userservice_health:
+    command: "curl -s http://localhost:8081/users/1"
+    expected: '{"id":1,"name":"User1"}'
+    
+  integration_health:
+    command: "curl -s http://localhost:8080/posts"
+    expected: "authorName이 'User1', 'User2'로 나와야 함 (Unknown User가 아님)"
+    
+  port_check:
+    command: "lsof -i :8080 -i :8081"
+    expected: "두 포트 모두 java 프로세스가 LISTEN 상태"

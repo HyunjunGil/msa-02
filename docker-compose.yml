@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  userservice:
+    build: ./UserService
+    container_name: userservice
+    ports:
+      - "8081:8081"
+    networks:
+      - msa-network
+
+  postservice:
+    build: ./PostService
+    container_name: postservice
+    ports:
+      - "8080:8080"
+    depends_on:
+      - userservice
+    networks:
+      - msa-network
+
+networks:
+  msa-network:
+    driver: bridge
