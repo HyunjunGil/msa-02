@@ -16,7 +16,7 @@ echo "3. Docker Compose로 서비스 실행 중..."
 docker-compose up -d --build
 
 echo "4. 서비스 상태 확인 중..."
-sleep 10
+sleep 3
 docker ps
 
 echo "5. 테스트 준비 완료!"
