@@ -3,11 +3,14 @@ FROM openjdk:17-jdk-slim
 WORKDIR /app
 
 COPY build.gradle .
+COPY settings.gradle .
+COPY gradlew .
+COPY gradle ./gradle
 COPY src ./src
 
-RUN apt-get update && apt-get install -y gradle
+RUN chmod +x gradlew
 
-RUN gradle build -x test
+RUN ./gradlew build -x test
 
 EXPOSE 8081
 
